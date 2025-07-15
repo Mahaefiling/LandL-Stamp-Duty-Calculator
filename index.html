@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stamp Duty Calculator (Maharashtra)</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      background-color: #fdfdfd;
+    }
+    input, button, select {
+      padding: 10px;
+      margin: 10px 0;
+      width: 100%;
+      font-size: 16px;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #aaa;
+      padding: 8px;
+      text-align: center;
+    }
+    th {
+      background-color: #f0f0f0;
+    }
+    .hidden {
+      display: none;
+    }
+    #output {
+      background: #eef;
+      padding: 15px;
+      border-radius: 8px;
+      margin-top: 20px;
+    }
+    .slab-controls {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .slab-controls button {
+      width: 48%;
+    }
+  </style>
+</head>
+<body>
+  <h2>IGR Maharashtra - Stamp Duty Calculator</h2>
+
+  <label>License Period (months):</label>
+  <input type="number" id="licenseMonths" />
+
+  <label>From Date:</label>
+  <input type="date" id="fromDate" />
+
+  <label>To Date:</label>
+  <input type="date" id="toDate" readonly />
+
+  <label>Refundable Deposit (₹):</label>
+  <input type="number" id="refundableDeposit" />
+
+  <label>Non-refundable Deposit (₹):</label>
+  <input type="number" id="nonRefundableDeposit" />
+
+  <label>Property Area:</label>
+  <select id="area">
+    <option value="urban">Urban</option>
+    <option value="rural">Rural</option>
+  </select>
+
+  <label>Rent Type:</label>
+  <select id="rentType" onchange="toggleRentType()">
+    <option value="fixed">Fixed Rent</option>
+    <option value="varying">Varying Rent</option>
+  </select>
+
+  <div id="fixedRentBlock">
+    <label>Monthly Rent (₹):</label>
+    <input type="number" id="fixedRent" />
+  </div>
+
+  <div id="varyingRentBlock" class="hidden">
+    <label>Base Rent for First Period (₹):</label>
+    <input type="number" id="baseRent" value="30000" />
+
+    <label>Annual Increment Percentage (%):</label>
+    <input type="number" id="incrementPercent" value="5" />
+
+    <div class="slab-controls">
+      <button onclick="generateSlabs()">Generate Rent Slabs</button>
+      <button onclick="clearSlabs()">Clear Slabs</button>
+    </div>
+    <div id="rentTable"></div>
+  </div>
+
+  <button onclick="calculateFees()">Calculate Fees</button>
+
+  <div id="output" style="display: none;"></div>
+
+  <script>
+    const licenseMonths = document.getElementById("licenseMonths");
+    const fromDate = document.getElementById("fromDate");
+    const toDate = document.getElementById("toDate");
+
+    licenseMonths.addEventListener("input", updateToDate);
+    fromDate.addEventListener("change", updateToDate);
+
+    function updateToDate() {
+      const months = parseInt(licenseMonths.value);
+      const from = new Date(fromDate.value);
+      if (!isNaN(from.getTime()) && months > 0) {
+        const to = new Date(from);
+        to.setMonth(to.getMonth() + months);
+        toDate.value = to.toISOString().split("T")[0];
+      }
+    }
+
+    function toggleRentType() {
+      const type = document.getElementById("rentType").value;
+      document.getElementById("fixedRentBlock").classList.toggle("hidden", type !== "fixed");
+      document.getElementById("varyingRentBlock").classList.toggle("hidden", type !== "varying");
+    }
+
+    function generateSlabs() {
+      const rentTable = document.getElementById("rentTable");
+      rentTable.innerHTML = "";
+
+      const months = parseInt(document.getElementById("licenseMonths").value);
+      const baseRent = parseFloat(document.getElementById("baseRent").value);
+      const increment = parseFloat(document.getElementById("incrementPercent").value);
+
+      if (isNaN(months) || isNaN(baseRent)) {
+        alert("Enter valid License Period and Base Rent");
+        return;
+      }
+
+      const years = Math.ceil(months / 12);
+      let table = `<table><tr><th>From Month</th><th>To Month</th><th>Rent (₹)</th></tr>`;
+      let start = 1;
+      let rent = baseRent;
+
+      for (let i = 0; start <= months; i++) {
+        let end = Math.min(start + 11, months);
+        table += `<tr>
+          <td><input type='number' value='${start}' class='fromMonth' /></td>
+          <td><input type='number' value='${end}' class='toMonth' oninput='updateNextFromMonth(this)' /></td>
+          <td><input type='number' class='rentInput' value='${rent.toFixed(2)}' /></td>
+        </tr>`;
+        start = end + 1;
+        rent += rent * (increment / 100);
+      }
+
+      table += `</table>`;
+      rentTable.innerHTML = table;
+    }
+
+    function updateNextFromMonth(toMonthInput) {
+      const currentRow = toMonthInput.closest("tr");
+      const nextRow = currentRow.nextElementSibling;
+      if (nextRow) {
+        const nextFromInput = nextRow.querySelector(".fromMonth");
+        const currentToValue = parseInt(toMonthInput.value);
+        if (!isNaN(currentToValue)) {
+          nextFromInput.value = currentToValue + 1;
+        }
+      }
+    }
+
+    function clearSlabs() {
+      document.getElementById("rentTable").innerHTML = "";
+    }
+
+    function calculateFees() {
+      const months = parseInt(document.getElementById("licenseMonths").value) || 0;
+      const refundable = parseFloat(document.getElementById("refundableDeposit").value) || 0;
+      const nonRefundable = parseFloat(document.getElementById("nonRefundableDeposit").value) || 0;
+      const rentType = document.getElementById("rentType").value;
+      const area = document.getElementById("area").value;
+
+      if (!months || months <= 0) {
+        alert("Please enter a valid License Period (in months)");
+        return;
+      }
+
+      let totalRent = 0;
+
+      if (rentType === "fixed") {
+        const fixedRent = parseFloat(document.getElementById("fixedRent").value);
+        if (isNaN(fixedRent)) {
+          alert("Please enter valid Fixed Rent amount");
+          return;
+        }
+        totalRent = fixedRent * months;
+      } else {
+        const rows = document.querySelectorAll("#rentTable table tr");
+        if (rows.length <= 1) {
+          alert("Please generate and verify Rent Slabs first");
+          return;
+        }
+        for (let i = 1; i < rows.length; i++) {
+          const cells = rows[i].querySelectorAll("input");
+          const from = parseInt(cells[0].value);
+          const to = parseInt(cells[1].value);
+          const rent = parseFloat(cells[2].value);
+          if (isNaN(from) || isNaN(to) || isNaN(rent)) continue;
+          totalRent += (to - from + 1) * rent;
+        }
+      }
+
+      const years = months / 12;
+      const d = totalRent + nonRefundable + (0.10 * refundable * years);
+      const stampDuty = d * 0.0025;
+      const registrationFee = area === 'urban' ? 1000 : 500;
+      const dhc = 300;
+      const total = stampDuty + registrationFee + dhc;
+
+      const out = document.getElementById("output");
+      out.innerHTML = `
+        <strong>Total Rent:</strong> ₹${totalRent.toFixed(2)}<br />
+        <strong>Stamp Duty (0.25%):</strong> ₹${stampDuty.toFixed(2)}<br />
+        <strong>Registration Fee:</strong> ₹${registrationFee.toFixed(2)}<br />
+        <strong>Document Handling Charges (DHC):</strong> ₹${dhc.toFixed(2)}<br />
+        <hr />
+        <strong>Total Payable:</strong> ₹${total.toFixed(2)}
+      `;
+      out.style.display = "block";
+    }
+  </script>
+</body>
+</html>
